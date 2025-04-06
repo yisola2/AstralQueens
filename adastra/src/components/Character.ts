@@ -98,6 +98,7 @@ export class Character {
 
             // Setup character mesh
             this.characterMesh = result.meshes[0];
+            this.characterMesh.name = "character"; // Add name for reference
             
             // Set character mesh as child of root node
             this.characterMesh.parent = this.characterRoot;

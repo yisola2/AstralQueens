@@ -11,8 +11,11 @@ import {
     Mesh,
     Color4,
     PhysicsAggregate,
-    PhysicsShapeType
+    PhysicsShapeType,
+    ActionManager,
+    ExecuteCodeAction
 } from "@babylonjs/core";
+import { PuzzleGrid } from "../components/PuzzleGrid";
 
 // Define physics parameters interface
 interface PhysicsParams {
@@ -25,6 +28,9 @@ export class MainScene {
     private scene: Scene;
     private environmentNode: TransformNode;
     private shadowGenerator!: ShadowGenerator;
+    private puzzleGrid!: PuzzleGrid;
+    private altar!: Mesh;
+    private interactionRadius: number = 18;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -32,6 +38,7 @@ export class MainScene {
         this.environmentNode = new TransformNode("environment", this.scene);
         this.setupLights();
         this.createEnvironment();
+        this.setupInput();
     }
 
     private setupLights(): void {
@@ -156,15 +163,15 @@ export class MainScene {
 
     private createAltar(position: Vector3): void {
         // Main altar body
-        const altar = MeshBuilder.CreateBox("altar", { height: 1.5, width: 1.5, depth: 1.5 }, this.scene);
-        altar.position = position;
-        altar.parent = this.environmentNode;
+        this.altar = MeshBuilder.CreateBox("altar", { height: 1.5, width: 1.5, depth: 1.5 }, this.scene);
+        this.altar.position = position;
+        this.altar.parent = this.environmentNode;
 
         const altarMaterial = new StandardMaterial("altarMaterial", this.scene);
         altarMaterial.diffuseColor = new Color3(0.8, 0.2, 0.2);
         altarMaterial.specularColor = new Color3(0.2, 0.2, 0.2);
         altarMaterial.emissiveColor = new Color3(0.2, 0.05, 0.05);
-        altar.material = altarMaterial;
+        this.altar.material = altarMaterial;
 
         // Add decorative top
         const altarTop = MeshBuilder.CreateCylinder("altarTop", { height: 0.2, diameter: 1.8 }, this.scene);
@@ -174,11 +181,71 @@ export class MainScene {
 
         // Add physics to the altar body
         new PhysicsAggregate(
-            altar,
+            this.altar,
             PhysicsShapeType.BOX,
             { mass: 0, restitution: 0, friction: 1.0 },
             this.scene
         );
+
+        // Initialize puzzle grid
+        this.puzzleGrid = new PuzzleGrid(this.scene);
+        
+        // Position the grid higher and closer to the altar
+        const gridPosition = position.add(new Vector3(0, 0.2, 3));
+        this.puzzleGrid.getGridParent().position = gridPosition;
+        
+        console.log("Altar position:", position);
+        console.log("Grid position:", gridPosition);
+    }
+
+    private setupInput(): void {
+        // Add action manager to scene
+        this.scene.actionManager = new ActionManager(this.scene);
+
+        // Add 'E' key press action
+        this.scene.actionManager.registerAction(
+            new ExecuteCodeAction(
+                {
+                    trigger: ActionManager.OnKeyDownTrigger,
+                    parameter: 'e'
+                },
+                () => {
+                    console.log("E key pressed");
+                    this.handleInteraction();
+                }
+            )
+        );
+    }
+
+    private handleInteraction(): void {
+        // Get character position (you'll need to implement this method in your Character class)
+        const characterPos = this.scene.getMeshByName("character")?.position;
+        if (!characterPos) {
+            console.log("Character position not found");
+            return;
+        }
+
+        console.log("Character position:", characterPos);
+        console.log("Altar position:", this.altar.position);
+
+        // Check if character is near the altar
+        const distanceToAltar = Vector3.Distance(characterPos, this.altar.position);
+        console.log("Distance to altar:", distanceToAltar);
+        console.log("Interaction radius:", this.interactionRadius);
+
+        if (distanceToAltar <= this.interactionRadius) {
+            console.log("Character is within interaction radius");
+            // Toggle grid activation
+            if (this.puzzleGrid.isGridActive()) {
+                this.puzzleGrid.deactivate();
+                console.log("Grid deactivated");
+            } else {
+                this.puzzleGrid.activate();
+                console.log("Grid activated");
+            }
+        } else {
+            console.log("Character is too far from altar");
+        }
     }
 
     private addDecorativeElements(): void {
