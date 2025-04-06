@@ -18,7 +18,7 @@ interface GridCell {
 export class PuzzleGrid {
     private scene: Scene;
     private gridSize: number = 7;
-    private cellSize: number = 2;
+    private cellSize: number = 1.14; // Adjusted to match platform width (8 units / 7 cells)
     private gridParent: TransformNode;
     private gridState: GridCell[][];
     private isActive: boolean = false;
@@ -59,13 +59,17 @@ export class PuzzleGrid {
 
     private createGrid(): void {
         const regionColors = [
-            new Color3(1, 1, 0.2),    // Yellow (0) - more saturated
-            new Color3(0.4, 0.8, 1),  // Light Blue (1) - more vibrant
+            new Color3(1, 1, 0.2),    // Yellow (0)
+            new Color3(0.4, 0.8, 1),  // Light Blue (1)
             new Color3(0.8, 0.8, 1),  // Light Purple (2)
-            new Color3(1, 0.5, 0.8),  // Pink (3) - more vibrant
-            new Color3(0.4, 1, 0.4),  // Green (4) - more vibrant
-            new Color3(0.6, 0.4, 1)   // Dark Purple (5) - more saturated
+            new Color3(1, 0.5, 0.8),  // Pink (3)
+            new Color3(0.4, 1, 0.4),  // Green (4)
+            new Color3(0.6, 0.4, 1)   // Dark Purple (5)
         ];
+
+        // Calculate total grid size
+        const totalWidth = this.getTotalWidth();
+        const totalDepth = this.getTotalDepth();
 
         for (let row = 0; row < this.gridSize; row++) {
             for (let col = 0; col < this.gridSize; col++) {
@@ -73,18 +77,18 @@ export class PuzzleGrid {
                 const platform = MeshBuilder.CreateBox(
                     `platform_${row}_${col}`,
                     { 
-                        width: this.cellSize * 0.95,  // Slightly smaller than cellSize to create gaps
-                        height: 0.1, 
-                        depth: this.cellSize * 0.95   // Slightly smaller than cellSize to create gaps
+                        width: this.cellSize * 0.98,  // Slight gap between cells
+                        height: 0.1,                  // Thin platforms
+                        depth: this.cellSize * 0.98   // Slight gap between cells
                     },
                     this.scene
                 );
 
-                // Position the platform - adjusted for larger cell size
+                // Position each cell with the grid centered at origin
                 platform.position = new Vector3(
-                    col * this.cellSize - (this.gridSize * this.cellSize) / 2 + this.cellSize / 2,
+                    (col - (this.gridSize - 1) / 2) * this.cellSize,
                     0,
-                    (this.gridSize - 1 - row) * this.cellSize - (this.gridSize * this.cellSize) / 2 + this.cellSize / 2 // Inverted row for correct orientation
+                    ((this.gridSize - 1) / 2 - row) * this.cellSize
                 );
 
                 // Create and apply material with enhanced visibility
@@ -95,7 +99,7 @@ export class PuzzleGrid {
                 material.ambientColor = regionColors[regionId];
                 platform.material = material;
 
-                // Add physics with adjusted size
+                // Add physics for walkability
                 new PhysicsAggregate(
                     platform,
                     PhysicsShapeType.BOX,
@@ -111,10 +115,18 @@ export class PuzzleGrid {
                 platform.metadata = {
                     type: 'platform',
                     row: row,
-                    col: col
+                    col: col,
+                    regionId: regionId
                 };
             }
         }
+
+        console.log("Grid created with dimensions:", {
+            totalWidth,
+            totalDepth,
+            cellSize: this.cellSize,
+            cellCount: this.gridSize
+        });
     }
 
     public activate(): void {
@@ -137,5 +149,13 @@ export class PuzzleGrid {
 
     public getGridParent(): TransformNode {
         return this.gridParent;
+    }
+
+    public getTotalDepth(): number {
+        return this.gridSize * this.cellSize;
+    }
+
+    public getTotalWidth(): number {
+        return this.gridSize * this.cellSize;
     }
 } 

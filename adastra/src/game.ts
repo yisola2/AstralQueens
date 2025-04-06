@@ -1,14 +1,13 @@
 import { 
     Engine, 
     Scene, 
-    UniversalCamera, 
     Vector3, 
     HemisphericLight,
     PhysicsCharacterController,
     CharacterShapeOptions,
     SceneLoader,
     HavokPlugin,
-    FollowCamera
+    ArcRotateCamera
 } from "@babylonjs/core";
 import "@babylonjs/loaders";
 import HavokPhysics, { HavokPhysicsWithBindings } from "@babylonjs/havok";
@@ -21,7 +20,7 @@ class Game {
     private scene: Scene;
     private mainScene!: MainScene;  // Using definite assignment assertion
     private character!: Character;   // Using definite assignment assertion
-    private camera!: UniversalCamera;
+    private camera!: ArcRotateCamera;
 
     constructor() {
         // Get the canvas element and assert its type
@@ -95,23 +94,46 @@ class Game {
     }
 
     private createCamera(): void {
-        // Create a universal camera
-        this.camera = new UniversalCamera(
+        // Create an ArcRotateCamera
+        this.camera = new ArcRotateCamera(
             "camera",
-            new Vector3(0, 2, -10),
+            Math.PI / 2,    // alpha (rotation around Y axis)
+            Math.PI / 3,    // beta (rotation around X axis)
+            15,             // radius (distance from target)
+            Vector3.Zero(), // target position
             this.scene
         );
 
-        // Camera settings
-        this.camera.speed = 0.5;
-        this.camera.inertia = 0.5;
-        this.camera.angularSensibility = 2000;
-        this.camera.checkCollisions = true;
-        this.camera.applyGravity = true;
-        this.camera.ellipsoid = new Vector3(1, 1, 1);
+        // Set camera limits
+        this.camera.lowerRadiusLimit = 5;   // Minimum distance from target
+        this.camera.upperRadiusLimit = 20;  // Maximum distance from target
+        this.camera.lowerBetaLimit = 0.1;   // Minimum angle above ground
+        this.camera.upperBetaLimit = Math.PI / 2.2; // Maximum angle (just below top view)
 
-        // Attach camera to canvas
+        // Camera behavior settings
+        this.camera.panningAxis = new Vector3(1, 0, 1); // Only allow panning in XZ plane
+        this.camera.wheelPrecision = 50;    // Mouse wheel sensitivity
+        this.camera.pinchPrecision = 50;    // Touch pinch sensitivity
+        this.camera.angularSensibilityX = 500; // Mouse rotation sensitivity
+        this.camera.angularSensibilityY = 500;
+
+        // Smooth camera movement
+        this.camera.inertia = 0.7;
+
+        // Attach camera controls to canvas
         this.camera.attachControl(this.canvas, true);
+
+        // Update camera in render loop
+        this.scene.onBeforeRenderObservable.add(() => {
+            if (this.character) {
+                const characterPos = this.character.getPosition();
+                // Smoothly move camera target to character position
+                const targetPos = this.camera.target;
+                targetPos.x += (characterPos.x - targetPos.x) * 0.1;
+                targetPos.y += (characterPos.y - targetPos.y) * 0.1;
+                targetPos.z += (characterPos.z - targetPos.z) * 0.1;
+            }
+        });
     }
 
     private createLight(): void {

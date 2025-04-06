@@ -122,6 +122,13 @@ export class MainScene {
         platform.position.y += 0.15; // Center it vertically
         platform.parent = this.environmentNode;
 
+        // Store platform dimensions in metadata for reference
+        platform.metadata = {
+            type: 'platform',
+            width: width,
+            height: height
+        };
+
         // Create material
         const material = new StandardMaterial(`${name}Material`, this.scene);
         material.diffuseColor = color;
@@ -190,11 +197,20 @@ export class MainScene {
         // Initialize puzzle grid
         this.puzzleGrid = new PuzzleGrid(this.scene);
         
-        // Position the grid higher and closer to the altar
-        const gridPosition = position.add(new Vector3(0, 0.2, 3));
+        // Position the grid as an extension of the platform
+        // The platform is 8x8, and we want the grid to extend backwards from it
+        const platformSize = { width: 8, depth: 8 };
+        const platformBackEdge = position.z + platformSize.depth / 2; // Get the back edge of the platform
+        
+        const gridPosition = new Vector3(
+            position.x, // Center X with altar
+            position.y, // Same height as platform
+            platformBackEdge + (this.puzzleGrid.getTotalDepth() / 2) // Position grid so it connects with platform
+        );
+        
         this.puzzleGrid.getGridParent().position = gridPosition;
         
-        console.log("Altar position:", position);
+        console.log("Platform back edge:", platformBackEdge);
         console.log("Grid position:", gridPosition);
     }
 
