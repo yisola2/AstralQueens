@@ -4,18 +4,39 @@ import {
     StandardMaterial,
     Color3,
     Vector3,
-    TransformNode
+    TransformNode,
+    Mesh,
+    Animation,
+    EasingFunction,
+    CircleEase
 } from '@babylonjs/core';
 
 export class Queen extends TransformNode {
     private scene: Scene;
     private material: StandardMaterial;
     private mesh: TransformNode;
+    // Initialize the animation in the declaration to satisfy TypeScript's strict initialization
+    private placementAnimation: Animation = new Animation(
+        "queenPlacementAnimation",
+        "position.y",
+        30, // frames per second
+        Animation.ANIMATIONTYPE_FLOAT,
+        Animation.ANIMATIONLOOPMODE_CONSTANT
+    );
 
     constructor(scene: Scene) {
         super('queen', scene);
         this.scene = scene;
+        
+        // Initialize properties
+        this.material = new StandardMaterial('queen_material', this.scene);
+        this.mesh = new TransformNode('queen_group', this.scene);
+        
+        // Create the queen mesh
         this.createMesh();
+        
+        // Set up the placement animation
+        this.setupAnimation();
     }
 
     private createMesh(): void {
@@ -60,9 +81,9 @@ export class Queen extends TransformNode {
         top.parent = this.mesh;
 
         // Create and apply material
-        this.material = new StandardMaterial('queen_material', this.scene);
         this.material.diffuseColor = new Color3(1, 1, 1);
         this.material.specularColor = new Color3(0.3, 0.3, 0.3);
+        this.material.emissiveColor = new Color3(0.1, 0.1, 0.3); // Slight glow
 
         // Apply material to all meshes
         [base, body, crown, top].forEach(mesh => {
@@ -71,18 +92,59 @@ export class Queen extends TransformNode {
 
         // Scale the entire group to make it fit nicely on the grid
         this.mesh.scaling = new Vector3(0.3, 0.3, 0.3);
+        
+        // Initially position slightly below the grid
+        this.mesh.position.y = -0.5;
+    }
+
+    private setupAnimation(): void {
+        // Animation keyframes
+        const keyFrames = [
+            {
+                frame: 0,
+                value: -0.5 // Starting below the grid
+            },
+            {
+                frame: 15,
+                value: 0.5 // Rising slightly above normal position
+            },
+            {
+                frame: 30,
+                value: 0.2 // Settling at final position
+            }
+        ];
+        
+        this.placementAnimation.setKeys(keyFrames);
+        
+        // Add easing for smoother animation
+        const easingFunction = new CircleEase();
+        easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
+        this.placementAnimation.setEasingFunction(easingFunction);
     }
 
     public setPosition(position: Vector3): void {
-        // Position the queen slightly above the grid cell
+        // Position the queen at the grid cell location
         this.position = position.clone();
-        this.position.y += 0.1; // Slight offset to avoid z-fighting
+        
+        // Play the placement animation
+        this.scene.beginDirectAnimation(
+            this, 
+            [this.placementAnimation], 
+            0, 
+            30, 
+            false, // not loop
+            1.0 // speed ratio
+        );
     }
 
     public dispose(): void {
+        // Stop any running animations
+        this.scene.stopAnimation(this);
+        
+        // Dispose of materials and meshes
         this.material.dispose();
         this.mesh.getChildMeshes().forEach(mesh => mesh.dispose());
         this.mesh.dispose();
         super.dispose();
     }
-} 
+}

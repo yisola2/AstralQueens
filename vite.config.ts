@@ -1,14 +1,26 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-    },
+      '@babylonjs/core': '@babylonjs/core/legacy/legacy',
+      '@babylonjs/loaders': '@babylonjs/loaders/legacy/legacy'
+    }
+  },
+  build: {
+    target: 'esnext',
+    outDir: 'dist',
+    chunkSizeWarningLimit: 1600
   },
   server: {
-    port: 3000,
-    open: true
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp'
+    }
+  },
+  assetsInclude: ['**/*.wasm'],
+  publicDir: 'public',
+  optimizeDeps: {
+    exclude: ['@babylonjs/havok']
   }
 }); 
