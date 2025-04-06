@@ -13,7 +13,8 @@ import {
     PhysicsAggregate,
     PhysicsShapeType,
     ActionManager,
-    ExecuteCodeAction
+    ExecuteCodeAction,
+    PointLight
 } from "@babylonjs/core";
 import { PuzzleGrid } from "../components/PuzzleGrid";
 
@@ -42,19 +43,45 @@ export class MainScene {
     }
 
     private setupLights(): void {
-        // Main directional light (sun)
-        const sunLight = new DirectionalLight("sunLight", new Vector3(0, -1, 1), this.scene);
-        sunLight.intensity = 0.8;
-        sunLight.position = new Vector3(0, 20, 0);
+        // Main directional light (moonlight)
+        const moonLight = new DirectionalLight("moonLight", new Vector3(-1, -2, 1), this.scene);
+        moonLight.intensity = 0.6;
+        moonLight.diffuse = new Color3(0.8, 0.85, 1.0);  // Slightly blue tint
+        moonLight.specular = new Color3(0.8, 0.85, 1.0);
+        moonLight.position = new Vector3(20, 40, -20);
 
-        // Ambient light
-        const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), this.scene);
-        ambientLight.intensity = 0.3;
+        // Ambient light (sky)
+        const skyLight = new HemisphericLight("skyLight", new Vector3(0, 1, 0), this.scene);
+        skyLight.intensity = 0.2;
+        skyLight.groundColor = new Color3(0.1, 0.1, 0.2);  // Blue-ish ground reflection
+        skyLight.diffuse = new Color3(0.3, 0.3, 0.4);      // Subtle blue sky color
 
-        // Setup shadows
-        this.shadowGenerator = new ShadowGenerator(1024, sunLight);
-        this.shadowGenerator.useBlurExponentialShadowMap = true;
-        this.shadowGenerator.blurKernel = 32;
+        // Setup enhanced shadows
+        this.shadowGenerator = new ShadowGenerator(2048, moonLight);
+        this.shadowGenerator.usePercentageCloserFiltering = true;  // Better quality shadows
+        this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+        this.shadowGenerator.darkness = 0.4;  // Less dark shadows for better visibility
+
+        // Add point lights near torches for dynamic lighting
+        this.createTorchLight(new Vector3(3, 1.5, 15));
+        this.createTorchLight(new Vector3(-3, 1.5, 15));
+        this.createTorchLight(new Vector3(3, 1.5, 19));
+        this.createTorchLight(new Vector3(-3, 1.5, 19));
+
+        // Add a special red glow for the altar
+        const altarLight = new PointLight("altarLight", new Vector3(0, 2, 17), this.scene);
+        altarLight.intensity = 0.8;
+        altarLight.diffuse = new Color3(1.0, 0.3, 0.3);  // Red color
+        altarLight.specular = new Color3(1.0, 0.3, 0.3);
+        altarLight.range = 8;  // Limited range for localized effect
+    }
+
+    private createTorchLight(position: Vector3): void {
+        const torchLight = new PointLight("torchLight", position, this.scene);
+        torchLight.intensity = 0.6;
+        torchLight.diffuse = new Color3(1.0, 0.7, 0.3);  // Warm torch color
+        torchLight.specular = new Color3(1.0, 0.7, 0.3);
+        torchLight.range = 6;  // Limited range for more realistic torch light
     }
 
     private createEnvironment(): void {
@@ -274,6 +301,7 @@ export class MainScene {
             const pillarMaterial = new StandardMaterial("pillarMaterial", this.scene);
             pillarMaterial.diffuseColor = new Color3(0.6, 0.6, 0.7);
             pillarMaterial.specularColor = new Color3(0.2, 0.2, 0.2);
+            pillarMaterial.emissiveColor = new Color3(0.1, 0.1, 0.15);  // Slight glow
             pillar.material = pillarMaterial;
 
             // Add physics for each pillar
@@ -294,7 +322,7 @@ export class MainScene {
         createPillar(new Vector3(1.5, 1.5, 13));
         createPillar(new Vector3(-1.5, 1.5, 13));
 
-        // Add decorative torches
+        // Add decorative torches with enhanced glow
         const createTorch = (position: Vector3) => {
             const torch = MeshBuilder.CreateCylinder("torch", { height: 0.5, diameter: 0.2 }, this.scene);
             torch.position = position;
@@ -303,12 +331,22 @@ export class MainScene {
             const torchMaterial = new StandardMaterial("torchMaterial", this.scene);
             torchMaterial.diffuseColor = new Color3(0.8, 0.4, 0.1);
             torchMaterial.emissiveColor = new Color3(0.8, 0.4, 0.1);
+            torchMaterial.specularColor = new Color3(1, 0.6, 0.2);
             torch.material = torchMaterial;
 
-            // No physics needed for small decorative elements
-            
             // Add shadow
             this.shadowGenerator.addShadowCaster(torch);
+
+            // Add a glowing flame effect
+            const flame = MeshBuilder.CreateSphere("flame", { diameter: 0.3 }, this.scene);
+            flame.position = position.add(new Vector3(0, 0.3, 0));
+            flame.parent = this.environmentNode;
+
+            const flameMaterial = new StandardMaterial("flameMaterial", this.scene);
+            flameMaterial.diffuseColor = new Color3(1, 0.6, 0.2);
+            flameMaterial.emissiveColor = new Color3(1, 0.6, 0.2);
+            flameMaterial.alpha = 0.7;
+            flame.material = flameMaterial;
         };
 
         // Add torches on the platform
